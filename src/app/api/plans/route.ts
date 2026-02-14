@@ -1,51 +1,52 @@
 import { NextResponse } from "next/server";
-import { getServiceVariations } from "@/lib/vtpass";
+import { getAggregatorFor } from "@/lib/aggregators";
+import type { CountryCode, ServiceType } from "@/lib/aggregators";
 
 /**
- * GET /api/plans?serviceID=mtn-data
+ * GET /api/plans?serviceID=mtn-data&serviceType=data&country=NG
  *
- * Returns available data plan variations for a given VTPass service.
- * Public endpoint — no payment required.
+ * Returns available plan variations for a given service provider.
+ * Uses the aggregator abstraction — VTPass for Nigeria, extensible.
  */
 export async function GET(request: Request) {
 	try {
 		const { searchParams } = new URL(request.url);
 		const serviceID = searchParams.get("serviceID");
+		const serviceType = (searchParams.get("serviceType") ||
+			"data") as ServiceType;
+		const country = (searchParams.get("country") || "NG") as CountryCode;
 
 		if (!serviceID) {
 			return NextResponse.json(
 				{
 					success: false,
 					error: "Missing serviceID parameter",
-					hint: "Use one of: mtn-data, airtel-data, glo-data, etisalat-data",
+					hint: "Pass the provider's serviceID (e.g. mtn-data)",
 				},
 				{ status: 400 }
 			);
 		}
 
-		const validServiceIDs = [
-			"mtn-data",
-			"airtel-data",
-			"glo-data",
-			"etisalat-data",
-		];
+		const aggregator = getAggregatorFor(serviceType, country);
 
-		if (!validServiceIDs.includes(serviceID)) {
+		if (!aggregator) {
 			return NextResponse.json(
 				{
 					success: false,
-					error: `Invalid serviceID: ${serviceID}`,
-					validOptions: validServiceIDs,
+					error: `No aggregator available for ${serviceType} in ${country}`,
 				},
-				{ status: 400 }
+				{ status: 404 }
 			);
 		}
 
-		const plans = await getServiceVariations(serviceID);
+		const plans = await aggregator.getPlans(serviceID);
 
 		return NextResponse.json({
 			success: true,
 			serviceID,
+			serviceType,
+			country,
+			aggregator: aggregator.info.id,
 			plans,
 			count: plans.length,
 		});
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
 		return NextResponse.json(
 			{
 				success: false,
-				error: "Failed to fetch data plans",
+				error: "Failed to fetch plans",
 				details:
 					error instanceof Error ? error.message : "Unknown error",
 			},
