@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "Stacks Refill — Buy Nigerian Airtime & Data with Crypto",
+	title: "Stacks Refill — Pay Bills & Subscriptions with Crypto",
 	description:
-		"Pay for Nigerian airtime and data bundles using STX, sBTC, or USDCx on the Stacks blockchain. Powered by x402 protocol.",
+		"Buy airtime, data bundles, TV subscriptions, electricity tokens and more using STX, sBTC, or USDCx on the Stacks blockchain.",
 	keywords: [
 		"stacks",
 		"STX",
@@ -24,9 +24,11 @@ export const metadata: Metadata = {
 		"USDCx",
 		"airtime",
 		"data",
+		"bills",
+		"subscriptions",
+		"crypto payments",
 		"Nigeria",
-		"crypto",
-		"x402",
+		"global",
 	],
 };
 
