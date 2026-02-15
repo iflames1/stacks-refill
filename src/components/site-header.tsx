@@ -31,47 +31,44 @@ export function SiteHeader() {
 					</div>
 				</Link>
 
-				<div className="flex items-center gap-2">
-					{isConnected ? (
-						<div className="flex items-center gap-4">
-							<Button variant="ghost" size="sm" asChild>
-								<Link
-									href="/transactions"
-									className="flex items-center gap-2"
-								>
-									<History className="h-4 w-4" />
-									<span className="hidden sm:inline">
-										History
-									</span>
-								</Link>
-							</Button>
-							<div className="flex items-center gap-2">
-								<Badge
-									variant="secondary"
-									className="font-mono text-xs"
-								>
-									{truncAddr(stxAddress!)}
-								</Badge>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={disconnectWallet}
-								>
-									Disconnect
-								</Button>
-							</div>
-						</div>
-					) : (
-						<Button
-							onClick={connectWallet}
-							disabled={connecting}
-							size="sm"
-						>
-							{connecting ? "Connecting..." : "Connect Wallet"}
-						</Button>
-					)}
-				</div>
-			</div>
-		</header>
-	);
-}
+				                <div className="flex items-center gap-2">
+				                    <Button variant="ghost" size="sm" asChild>
+				                        <Link
+				                            href="/transactions"
+				                            className="flex items-center gap-2"
+				                        >
+				                            <History className="h-4 w-4" />
+				                            <span className="hidden sm:inline">History</span>
+				                        </Link>
+				                    </Button>
+				
+				                    {isConnected ? (
+				                        <div className="flex items-center gap-2">
+				                            <Badge
+				                                variant="secondary"
+				                                className="font-mono text-xs"
+				                            >
+				                                {truncAddr(stxAddress!)}
+				                            </Badge>
+				                            <Button
+				                                variant="outline"
+				                                size="sm"
+				                                onClick={disconnectWallet}
+				                            >
+				                                Disconnect
+				                            </Button>
+				                        </div>
+				                    ) : (
+				                        <Button
+				                            onClick={connectWallet}
+				                            disabled={connecting}
+				                            size="sm"
+				                        >
+				                            {connecting ? "Connecting..." : "Connect Wallet"}
+				                        </Button>
+				                    )}
+				                </div>
+				            </div>
+				        </header>
+				    );
+				}
