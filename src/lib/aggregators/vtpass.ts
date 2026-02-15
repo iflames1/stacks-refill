@@ -42,7 +42,7 @@ function getHeaders(method: "GET" | "POST"): Record<string, string> {
 function generateRequestId(): string {
 	const now = new Date();
 	const lagosTime = new Date(
-		now.toLocaleString("en-US", { timeZone: "Africa/Lagos" })
+		now.toLocaleString("en-US", { timeZone: "Africa/Lagos" }),
 	);
 	const y = lagosTime.getFullYear();
 	const mo = (lagosTime.getMonth() + 1).toString().padStart(2, "0");
@@ -145,7 +145,7 @@ export class VTPassAggregator implements Aggregator {
 
 	async getProviders(
 		serviceType: ServiceType,
-		_country: CountryCode
+		_country: CountryCode,
 	): Promise<ServiceProvider[]> {
 		return PROVIDER_MAP[serviceType] ?? [];
 	}
@@ -161,7 +161,7 @@ export class VTPassAggregator implements Aggregator {
 
 		if (!response.ok) {
 			throw new Error(
-				`VTPass variations error: ${response.status} ${response.statusText}`
+				`VTPass variations error: ${response.status} ${response.statusText}`,
 			);
 		}
 
@@ -179,7 +179,7 @@ export class VTPassAggregator implements Aggregator {
 				name: v.name,
 				amount: Number(v.variation_amount),
 				currency: "NGN",
-			})
+			}),
 		);
 	}
 
@@ -216,7 +216,7 @@ export class VTPassAggregator implements Aggregator {
 
 		if (!response.ok) {
 			throw new Error(
-				`VTPass purchase error: ${response.status} ${response.statusText}`
+				`VTPass purchase error: ${response.status} ${response.statusText}`,
 			);
 		}
 
@@ -257,6 +257,46 @@ export class VTPassAggregator implements Aggregator {
 				return /^\d{7,15}$/.test(cleaned);
 			default:
 				return cleaned.length > 0;
+		}
+	}
+
+	async verifyCustomer(
+		serviceID: string,
+		recipient: string,
+		variationCode?: string,
+	): Promise<string | null> {
+		const baseUrl = getBaseUrl();
+		const body: Record<string, string> = {
+			serviceID,
+			billersCode: recipient,
+		};
+		if (variationCode) {
+			body.type = variationCode;
+		}
+
+		try {
+			const response = await fetch(`${baseUrl}/merchant-verify`, {
+				method: "POST",
+				headers: getHeaders("POST"),
+				body: JSON.stringify(body),
+			});
+
+			if (!response.ok) return null;
+
+			const data = await response.json();
+			const content = data.content;
+			if (!content) return null;
+
+			return (
+				content.Customer_Name ||
+				content.name ||
+				content.customerName ||
+				content.fullName ||
+				null
+			);
+		} catch (error) {
+			console.error("VTPass verify error:", error);
+			return null;
 		}
 	}
 }

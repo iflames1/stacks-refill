@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useWallet, type PaymentRequirements } from "@/lib/stacks-wallet";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -13,17 +13,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { type PaymentRequirements, useWallet } from "@/lib/stacks-wallet";
 
 import type {
-	ServiceInfo,
-	ServiceProvider,
-	ServicePlan,
-	CryptoType,
 	CryptoPrices,
+	CryptoType,
 	PurchaseResult,
 	PurchaseStep,
+	ServiceInfo,
+	ServicePlan,
+	ServiceProvider,
 } from "./types";
 import { CRYPTO_OPTIONS } from "./types";
 
@@ -31,9 +31,17 @@ interface PurchaseFormProps {
 	service: ServiceInfo;
 	prices: CryptoPrices | null;
 	onBack: () => void;
+	country: string;
+	currencySymbol: string;
 }
 
-export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
+export function PurchaseForm({
+	service,
+	prices,
+	onBack,
+	country,
+	currencySymbol,
+}: PurchaseFormProps) {
 	const { isConnected, payWithWallet } = useWallet();
 
 	// ─── Form state ───
@@ -53,6 +61,53 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 	const [statusMessage, setStatusMessage] = useState("");
 	const [result, setResult] = useState<PurchaseResult | null>(null);
 
+	// ─── Verification state ───
+	const [verifiedName, setVerifiedName] = useState<string | null>(null);
+	const [isVerifying, setIsVerifying] = useState(false);
+	const [verificationError, setVerificationError] = useState<string | null>(
+		null,
+	);
+
+	useEffect(() => {
+		if (service.type !== "tv" && service.type !== "electricity") return;
+
+		setVerifiedName(null);
+		setVerificationError(null);
+
+		const cleanRecipient = recipient.trim();
+		if (cleanRecipient.length < 9 || !provider) return;
+
+		const timer = setTimeout(async () => {
+			setIsVerifying(true);
+			try {
+				const res = await fetch("/api/verify", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						serviceType: service.type,
+						serviceID: provider.serviceID,
+						recipient: cleanRecipient,
+						variationCode: selectedPlan?.code,
+						country,
+					}),
+				});
+
+				const data = await res.json();
+				if (data.success && data.name) {
+					setVerifiedName(data.name);
+				} else {
+					setVerificationError(data.error || "Could not verify details");
+				}
+			} catch {
+				setVerificationError("Verification request failed");
+			} finally {
+				setIsVerifying(false);
+			}
+		}, 800);
+
+		return () => clearTimeout(timer);
+	}, [recipient, provider, selectedPlan, service.type]);
+
 	// ─── Fetch plans when provider changes ───
 	useEffect(() => {
 		if (!service.requiresPlan || !provider) return;
@@ -63,7 +118,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 			setSelectedPlan(null);
 			try {
 				const res = await fetch(
-					`/api/plans?serviceID=${provider.serviceID}&serviceType=${service.type}&country=NG`
+					`/api/plans?serviceID=${provider.serviceID}&serviceType=${service.type}&country=${country}`,
 				);
 				const data = await res.json();
 				if (data.success) setPlans(data.plans || []);
@@ -79,8 +134,9 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 	// ─── Calculations ───
 
 	const getLocalAmount = (): number => {
+		if (service.allowCustomAmount) return amount || Number(customAmount) || 0;
 		if (service.requiresPlan) return selectedPlan ? selectedPlan.amount : 0;
-		return amount || Number(customAmount) || 0;
+		return 0;
 	};
 
 	const getCryptoAmount = (): string => {
@@ -119,7 +175,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 			amount: localAmount,
 			variationCode: selectedPlan?.code,
 			cryptoType,
-			country: "NG",
+			country,
 		};
 
 		try {
@@ -203,9 +259,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 				setStatusMessage("Purchase successful!");
 			} else {
 				setStep("error");
-				setStatusMessage(
-					data.error || data.message || "Purchase failed"
-				);
+				setStatusMessage(data.error || data.message || "Purchase failed");
 			}
 			setResult(data);
 		} catch (err) {
@@ -230,12 +284,18 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 
 	const isRecipientValid = recipient.trim().length >= 7;
 	const localAmount = getLocalAmount();
+	const isVerifiedIfRequired =
+		service.type !== "tv" && service.type !== "electricity"
+			? true
+			: !!verifiedName;
+
 	const canPurchase =
 		isConnected &&
 		isRecipientValid &&
 		localAmount > 0 &&
 		provider !== null &&
 		(!service.requiresPlan || selectedPlan !== null) &&
+		isVerifiedIfRequired &&
 		step === "idle";
 
 	const isProcessing =
@@ -278,11 +338,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 						{service.providers.map((p) => (
 							<Button
 								key={p.id}
-								variant={
-									provider?.id === p.id
-										? "default"
-										: "outline"
-								}
+								variant={provider?.id === p.id ? "default" : "outline"}
 								size="sm"
 								className="w-full"
 								onClick={() => {
@@ -291,9 +347,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 									setPlans([]);
 								}}
 							>
-								{p.logo && (
-									<span className="mr-1.5">{p.logo}</span>
-								)}
+								{p.logo && <span className="mr-1.5">{p.logo}</span>}
 								{p.name}
 							</Button>
 						))}
@@ -331,7 +385,8 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 											{plan.name}
 										</p>
 										<p className="text-primary mt-1 font-bold">
-											₦{plan.amount.toLocaleString()}
+											{currencySymbol}
+											{plan.amount.toLocaleString()}
 										</p>
 									</button>
 								))}
@@ -344,7 +399,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 				{service.allowCustomAmount && (
 					<div>
 						<Label className="mb-2 block text-sm font-medium">
-							Amount (₦)
+							Amount ({currencySymbol})
 						</Label>
 						{service.quickAmounts && (
 							<div className="mb-3 grid grid-cols-3 gap-2">
@@ -352,9 +407,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 									<Button
 										key={a}
 										variant={
-											amount === a && !customAmount
-												? "default"
-												: "outline"
+											amount === a && !customAmount ? "default" : "outline"
 										}
 										size="sm"
 										onClick={() => {
@@ -362,15 +415,14 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 											setCustomAmount("");
 										}}
 									>
-										₦{a.toLocaleString()}
+										{currencySymbol}
+										{a.toLocaleString()}
 									</Button>
 								))}
 							</div>
 						)}
 						<div className="flex items-center gap-2">
-							<span className="text-muted-foreground text-sm">
-								or
-							</span>
+							<span className="text-muted-foreground text-sm">or</span>
 							<Input
 								type="number"
 								placeholder="Custom amount"
@@ -390,10 +442,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 
 				{/* ─── Recipient ─── */}
 				<div>
-					<Label
-						htmlFor="recipient"
-						className="mb-2 block text-sm font-medium"
-					>
+					<Label htmlFor="recipient" className="mb-2 block text-sm font-medium">
 						{service.recipientLabel}
 					</Label>
 					<Input
@@ -403,16 +452,35 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 						value={recipient}
 						onChange={(e) => setRecipient(e.target.value)}
 						className={
-							recipient && !isRecipientValid
-								? "border-destructive"
-								: ""
+							recipient && !isRecipientValid ? "border-destructive" : ""
 						}
 					/>
 					{recipient && !isRecipientValid && (
 						<p className="text-destructive mt-1 text-xs">
-							Enter a valid{" "}
-							{service.recipientLabel.toLowerCase()}
+							Enter a valid {service.recipientLabel.toLowerCase()}
 						</p>
+					)}
+
+					{/* ─── Verification Result ─── */}
+					{(service.type === "tv" || service.type === "electricity") && (
+						<div className="mt-2 text-sm">
+							{isVerifying && (
+								<p className="text-muted-foreground flex items-center gap-2">
+									<span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+									Verifying ID...
+								</p>
+							)}
+							{!isVerifying && verifiedName && (
+								<p className="text-green-600 dark:text-green-400 font-medium flex items-center gap-2">
+									✅ {verifiedName}
+								</p>
+							)}
+							{!isVerifying && verificationError && recipient.length >= 10 && (
+								<p className="text-destructive flex items-center gap-2">
+									❌ {verificationError}
+								</p>
+							)}
+						</div>
 					)}
 				</div>
 
@@ -420,9 +488,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 
 				{/* ─── Crypto Selection ─── */}
 				<div>
-					<Label className="mb-2 block text-sm font-medium">
-						Pay With
-					</Label>
+					<Label className="mb-2 block text-sm font-medium">Pay With</Label>
 					<RadioGroup
 						value={cryptoType}
 						onValueChange={(v) => setCryptoType(v as CryptoType)}
@@ -444,12 +510,8 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 									className="sr-only"
 								/>
 								<span className="text-xl">{c.icon}</span>
-								<span className="text-sm font-semibold">
-									{c.label}
-								</span>
-								<span className="text-muted-foreground text-xs">
-									{c.desc}
-								</span>
+								<span className="text-sm font-semibold">{c.label}</span>
+								<span className="text-muted-foreground text-xs">{c.desc}</span>
 							</Label>
 						))}
 					</RadioGroup>
@@ -465,15 +527,14 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 									{service.requiresPlan ? "Plan" : "Amount"}
 								</span>
 								<span className="font-medium">
-									₦{localAmount.toLocaleString()}
+									{currencySymbol}
+									{localAmount.toLocaleString()}
 								</span>
 							</div>
 							<div className="flex justify-between text-sm">
-								<span className="text-muted-foreground">
-									{cryptoType} Rate
-								</span>
+								<span className="text-muted-foreground">{cryptoType} Rate</span>
 								<span className="font-medium">
-									₦
+									{currencySymbol}
 									{(cryptoType === "STX"
 										? prices.stx
 										: cryptoType === "sBTC"
@@ -484,9 +545,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 								</span>
 							</div>
 							<div className="flex justify-between text-sm">
-								<span className="text-muted-foreground">
-									Slippage Buffer
-								</span>
+								<span className="text-muted-foreground">Slippage Buffer</span>
 								<span className="font-medium">2%</span>
 							</div>
 							<Separator />
@@ -535,14 +594,12 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 							</p>
 							{step === "awaiting-wallet" && (
 								<p className="text-muted-foreground text-center text-xs">
-									Check your wallet extension for the
-									transaction approval
+									Check your wallet extension for the transaction approval
 								</p>
 							)}
 							{step === "confirming" && (
 								<p className="text-muted-foreground text-center text-xs">
-									Verifying on Stacks blockchain & delivering
-									your service...
+									Verifying on Stacks blockchain & delivering your service...
 								</p>
 							)}
 						</CardContent>
@@ -560,25 +617,18 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 							{result.fulfilment && (
 								<div className="space-y-1">
 									<p>
-										<span className="text-muted-foreground">
-											Product:
-										</span>{" "}
+										<span className="text-muted-foreground">Product:</span>{" "}
 										{result.fulfilment.productName}
 									</p>
 									<p>
-										<span className="text-muted-foreground">
-											Ref:
-										</span>{" "}
+										<span className="text-muted-foreground">Ref:</span>{" "}
 										{result.fulfilment.transactionId}
 									</p>
 									<p>
-										<span className="text-muted-foreground">
-											Status:
-										</span>{" "}
+										<span className="text-muted-foreground">Status:</span>{" "}
 										<Badge
 											variant={
-												result.fulfilment.status ===
-												"delivered"
+												result.fulfilment.status === "delivered"
 													? "default"
 													: "secondary"
 											}
@@ -591,27 +641,19 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 							{result.payment && (
 								<div className="mt-2 space-y-1">
 									<p>
-										<span className="text-muted-foreground">
-											Paid:
-										</span>{" "}
-										{result.payment.cryptoAmount}{" "}
-										{result.payment.cryptoType}
+										<span className="text-muted-foreground">Paid:</span>{" "}
+										{result.payment.cryptoAmount} {result.payment.cryptoType}
 									</p>
 									{result.payment.txId && (
 										<p>
-											<span className="text-muted-foreground">
-												Tx:
-											</span>{" "}
+											<span className="text-muted-foreground">Tx:</span>{" "}
 											<a
 												href={`https://explorer.hiro.so/txid/${result.payment.txId}?chain=${result.payment.network || "mainnet"}`}
 												target="_blank"
 												rel="noopener noreferrer"
 												className="text-primary break-all underline underline-offset-2"
 											>
-												{result.payment.txId.slice(
-													0,
-													12
-												)}
+												{result.payment.txId.slice(0, 12)}
 												...
 												{result.payment.txId.slice(-8)}
 											</a>
@@ -627,11 +669,7 @@ export function PurchaseForm({ service, prices, onBack }: PurchaseFormProps) {
 								>
 									Buy Again
 								</Button>
-								<Button
-									onClick={onBack}
-									variant="ghost"
-									className="flex-1"
-								>
+								<Button onClick={onBack} variant="ghost" className="flex-1">
 									All Services
 								</Button>
 							</div>

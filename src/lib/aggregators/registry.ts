@@ -83,7 +83,7 @@ export const SERVICE_CATALOGUE: ServiceMeta[] = [
 		icon: "⚡",
 		recipientLabel: "Meter Number",
 		recipientPlaceholder: "12345678901",
-		requiresPlan: false,
+		requiresPlan: true,
 		allowCustomAmount: true,
 		quickAmounts: [1000, 2000, 5000, 10000, 20000],
 	},
@@ -168,7 +168,13 @@ export function getServiceAvailability(): {
 	const comingSoon: ServiceMeta[] = [];
 
 	// Only airtime and data are active for MVP
-	const activeTypes: ServiceType[] = ["airtime", "data"];
+	const activeTypes: ServiceType[] = [
+		"airtime",
+		"data",
+		"tv",
+		"electricity",
+		"education",
+	];
 
 	for (const svc of SERVICE_CATALOGUE) {
 		if (activeTypes.includes(svc.type) && isServiceAvailable(svc.type)) {
