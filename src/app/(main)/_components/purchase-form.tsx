@@ -270,7 +270,11 @@ export function PurchaseForm({
 					currency: currencySymbol === "₦" ? "NGN" : "USD", // Simplified for now
 					cryptoAmount: getCryptoAmount(),
 					cryptoType,
-					status: data.fulfilment?.status || "delivered",
+					status:
+						(data.fulfilment?.status as
+							| "delivered"
+							| "pending"
+							| "failed") || "delivered",
 					txId: data.payment?.txId,
 					ref: data.fulfilment?.transactionId,
 				});
