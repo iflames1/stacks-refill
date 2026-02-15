@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { History } from "lucide-react";
 import { useWallet } from "@/lib/stacks-wallet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +17,7 @@ export function SiteHeader() {
 	return (
 		<header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-950/80">
 			<div className="container mx-auto flex items-center justify-between px-4 py-4">
-				<div className="flex items-center gap-3">
+				<Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-80">
 					<div className="bg-primary text-primary-foreground flex h-10 w-10 items-center justify-center rounded-lg text-lg font-bold">
 						SR
 					</div>
@@ -27,36 +29,46 @@ export function SiteHeader() {
 							Pay subscriptions & bills with crypto
 						</p>
 					</div>
-				</div>
+				</Link>
 
-				<div className="flex items-center gap-2">
-					{isConnected ? (
-						<div className="flex items-center gap-2">
-							<Badge
-								variant="secondary"
-								className="font-mono text-xs"
-							>
-								{truncAddr(stxAddress!)}
-							</Badge>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={disconnectWallet}
-							>
-								Disconnect
-							</Button>
-						</div>
-					) : (
-						<Button
-							onClick={connectWallet}
-							disabled={connecting}
-							size="sm"
-						>
-							{connecting ? "Connecting..." : "Connect Wallet"}
-						</Button>
-					)}
-				</div>
-			</div>
-		</header>
-	);
-}
+				                <div className="flex items-center gap-2">
+				                    <Button variant="ghost" size="sm" asChild>
+				                        <Link
+				                            href="/transactions"
+				                            className="flex items-center gap-2"
+				                        >
+				                            <History className="h-4 w-4" />
+				                            <span className="hidden sm:inline">History</span>
+				                        </Link>
+				                    </Button>
+				
+				                    {isConnected ? (
+				                        <div className="flex items-center gap-2">
+				                            <Badge
+				                                variant="secondary"
+				                                className="font-mono text-xs"
+				                            >
+				                                {truncAddr(stxAddress!)}
+				                            </Badge>
+				                            <Button
+				                                variant="outline"
+				                                size="sm"
+				                                onClick={disconnectWallet}
+				                            >
+				                                Disconnect
+				                            </Button>
+				                        </div>
+				                    ) : (
+				                        <Button
+				                            onClick={connectWallet}
+				                            disabled={connecting}
+				                            size="sm"
+				                        >
+				                            {connecting ? "Connecting..." : "Connect Wallet"}
+				                        </Button>
+				                    )}
+				                </div>
+				            </div>
+				        </header>
+				    );
+				}

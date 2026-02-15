@@ -146,3 +146,22 @@ export interface PaymentGateResult {
 		network?: string;
 	};
 }
+
+// ============================
+// Local Storage History
+// ============================
+
+export interface LocalTransaction {
+	id: string;
+	date: string;
+	serviceType: string;
+	productName: string;
+	recipient: string;
+	amount: number;
+	currency: string;
+	cryptoAmount: string;
+	cryptoType: string;
+	status: "delivered" | "pending" | "failed";
+	txId?: string;
+	ref?: string;
+}

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
+import { useTransactionHistory } from "@/hooks/use-transaction-history";
 import { type PaymentRequirements, useWallet } from "@/lib/stacks-wallet";
 
 import type {
@@ -43,6 +44,7 @@ export function PurchaseForm({
 	currencySymbol,
 }: PurchaseFormProps) {
 	const { isConnected, payWithWallet } = useWallet();
+	const { addTransaction } = useTransactionHistory();
 
 	// ─── Form state ───
 	const [provider, setProvider] = useState<ServiceProvider | null>(null);
@@ -257,6 +259,23 @@ export function PurchaseForm({
 			if (data.success) {
 				setStep("success");
 				setStatusMessage("Purchase successful!");
+
+				addTransaction({
+					id: crypto.randomUUID(),
+					date: new Date().toISOString(),
+					serviceType: service.type,
+					productName: data.fulfilment?.productName || provider.name,
+					recipient: recipient.trim(),
+					amount: localAmount,
+					currency: currencySymbol === "₦" ? "NGN" : "USD",
+					cryptoAmount: getCryptoAmount(),
+					cryptoType,
+					status:
+						(data.fulfilment?.status as "delivered" | "pending" | "failed") ||
+						"delivered",
+					txId: data.payment?.txId,
+					ref: data.fulfilment?.transactionId,
+				});
 			} else {
 				setStep("error");
 				setStatusMessage(data.error || data.message || "Purchase failed");
