@@ -9,6 +9,7 @@ import { PurchaseForm } from "./_components/purchase-form";
 
 export default function HomePage() {
 	// ─── Service catalogue ───
+	const [country, setCountry] = useState<"NG">("NG"); // Default to NG for MVP
 	const [services, setServices] = useState<ServiceInfo[]>([]);
 	const [comingSoon, setComingSoon] = useState<ComingSoon[]>([]);
 	const [loadingServices, setLoadingServices] = useState(true);
@@ -20,11 +21,33 @@ export default function HomePage() {
 	const [prices, setPrices] = useState<CryptoPrices | null>(null);
 	const [loadingPrices, setLoadingPrices] = useState(false);
 
+	// ─── Helpers ───
+	const getCurrencySymbol = (c: string) => {
+		switch (c) {
+			case "NG":
+				return "₦";
+			case "GH":
+				return "₵";
+			case "KE":
+				return "KSh";
+			case "ZA":
+				return "R";
+			case "US":
+				return "$";
+			case "GB":
+				return "£";
+			default:
+				return "$";
+		}
+	};
+	const currencySymbol = getCurrencySymbol(country);
+
 	// ─── Fetch services ───
 	useEffect(() => {
 		(async () => {
+			setLoadingServices(true);
 			try {
-				const res = await fetch("/api/services?country=NG");
+				const res = await fetch(`/api/services?country=${country}`);
 				const data = await res.json();
 				if (data.success) {
 					setServices(data.available || []);
@@ -36,7 +59,7 @@ export default function HomePage() {
 				setLoadingServices(false);
 			}
 		})();
-	}, []);
+	}, [country]);
 
 	// ─── Fetch prices ───
 	const fetchPrices = useCallback(async () => {
@@ -82,6 +105,8 @@ export default function HomePage() {
 					service={activeService}
 					prices={prices}
 					onBack={goBack}
+					country={country}
+					currencySymbol={currencySymbol}
 				/>
 			)}
 		</div>

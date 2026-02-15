@@ -124,4 +124,14 @@ export interface Aggregator {
 	 * Returns true if the format is valid for the given service.
 	 */
 	validateRecipient(recipient: string, serviceType: ServiceType): boolean;
+
+	/**
+	 * Verify a customer's identity before purchase (e.g. resolve Name from Meter No).
+	 * Returns the customer name if found, or null/undefined if not supported/found.
+	 */
+	verifyCustomer(
+		serviceID: string,
+		recipient: string,
+		variationCode?: string
+	): Promise<string | null>;
 }
