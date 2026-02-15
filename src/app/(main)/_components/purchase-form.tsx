@@ -261,20 +261,18 @@ export function PurchaseForm({
 				setStatusMessage("Purchase successful!");
 
 				addTransaction({
-					id: Math.random().toString(36).substring(2, 15),
+					id: crypto.randomUUID(),
 					date: new Date().toISOString(),
 					serviceType: service.type,
 					productName: data.fulfilment?.productName || provider.name,
 					recipient: recipient.trim(),
 					amount: localAmount,
-					currency: currencySymbol === "₦" ? "NGN" : "USD", // Simplified for now
+					currency: currencySymbol === "₦" ? "NGN" : "USD",
 					cryptoAmount: getCryptoAmount(),
 					cryptoType,
 					status:
-						(data.fulfilment?.status as
-							| "delivered"
-							| "pending"
-							| "failed") || "delivered",
+						(data.fulfilment?.status as "delivered" | "pending" | "failed") ||
+						"delivered",
 					txId: data.payment?.txId,
 					ref: data.fulfilment?.transactionId,
 				});
