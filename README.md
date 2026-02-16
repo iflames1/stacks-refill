@@ -85,7 +85,7 @@ Payment-gated purchase endpoint.
 {
   "serviceType": "airtime",
   "serviceID": "mtn",
-  "recipient": "08012345678",
+  "recipient": "08011111111",
   "amount": 500,
   "cryptoType": "STX",
   "country": "NG"
@@ -224,9 +224,9 @@ Set `VTPASS_BASE_URL=https://sandbox.vtpass.com/api` and use VTPass sandbox test
 |---|---|---|
 | Airtime | ✅ Live | Nigeria |
 | Data Bundles | ✅ Live | Nigeria |
-| TV Subscription | 🔜 Coming Soon | — |
-| Electricity | 🔜 Coming Soon | — |
-| Education PINs | 🔜 Coming Soon | — |
+| TV Subscription | ✅ Live | Nigeria |
+| Electricity | ✅ Live | Nigeria |
+| Education PINs | ✅ Live | Nigeria |
 
 Want to bring a service or country online? [See Contributing](#contributing--adding-an-aggregator).
 
